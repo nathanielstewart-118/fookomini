@@ -54,6 +54,11 @@
     <li class="nav-item" role="presentation">
       <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs" type="button" role="tab" aria-controls="logs" aria-selected="false">Logs</button>
     </li>
+    <li class="nav-item ms-auto" role="presentation">
+      <button class="nav-link" id="refresh-db-btn" type="button" onclick="refreshDB()">
+        <i class="fas fa-sync-alt"></i> Refresh DB
+      </button>
+    </li>
   </ul>
 
   <!-- Tabs Content -->
@@ -184,7 +189,7 @@
         <td>${item.uid || ''}</td>
         <td>${item.amount || '0'}</td>
         <td>${item.created_at || ''}</td>
-        <td>${item.updated_at || ''}</td>
+        <td>${item.last_access || ''}</td>
       </tr>`;
       $('#uids-table-tbody').append(row);
     });
@@ -195,7 +200,19 @@
       lengthMenu: [5, 10, 25, 50, 100],
       order: [[0, 'asc']],
       dom: 'Bfrtip',
-      buttons: ['copy', 'csv', 'excel', 'pdf', 'print']
+      buttons: ['copy', 'csv', 'excel', 'pdf', 'print'],
+      language: {
+        processing: '<i class="fas fa-spinner fa-spin"></i> Loading...',
+        loadingRecords: '<i class="fas fa-spinner fa-spin"></i> Loading...',
+        zeroRecords: '<i class="fas fa-spinner fa-spin"></i> Loading...',
+        emptyTable: '<i class="fas fa-spinner fa-spin"></i> Loading...',
+        info: '<i class="fas fa-spinner fa-spin"></i> Loading...',
+        infoEmpty: '<i class="fas fa-spinner fa-spin"></i> Loading...',
+        infoFiltered: '<i class="fas fa-spinner fa-spin"></i> Loading...',
+        infoPostFix: '<i class="fas fa-spinner fa-spin"></i> Loading...',
+        search: '<i class="fas fa-spinner fa-spin"></i> Loading...'
+        
+      }
     });
   }
 
@@ -217,7 +234,7 @@
         tid: one.tid ?? "",
         received: one.received_json ?? "",
         sent: one.sent_json ?? "",
-        lastAccess: one.updated_at ?? "",
+        lastAccess: one.last_access ?? "",
         createdAt: one.created_at ?? "",
       }
       dom = "<tr><td>" + 
@@ -261,6 +278,35 @@
     .then(response => response.json())
     .then(data => displayTable(data.logs, "logs-table-tbody", "logs-table"))
     .catch(console.log)
+  }
+
+  const refreshDB = () => {
+    fetch(logsApiEndPoint, {
+      method: "POST",
+      body: new URLSearchParams({
+        command: "refresh_db"
+      }),
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log(data)
+      if (data.success) {
+        alert("Database refreshed successfully!");
+        // Reload current tab data
+        const activeTab = document.querySelector('.nav-link.active');
+        if (activeTab.id === 'uids-tab') {
+          loadUIDs();
+        } else if (activeTab.id === 'logs-tab') {
+          handleChangeMonth($("#monthPicker").val());
+        }
+      } else {
+        alert("Failed to refresh database: " + (data.message || "Unknown error"));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert("Error refreshing database. Please check console for details.");
+    });
   }
 </script>
 

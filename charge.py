@@ -1,4 +1,6 @@
-#!C:/Users/1/AppData/Local/Programs/Python/Python313/python3.13.exe
+#!./.venv/bin/python3
+#coding: utf-8
+
 import json
 import cgi
 import os
@@ -33,7 +35,8 @@ def handle():
             result = do_charge(target=NEW_USER, form=form)
         elif command == "withdrawal":
             result = withdraw(form=form)
-        
+        else:
+            result = { "success": False, "data": "Invalid command" }
     except Exception as e:
         result = { "success": False, "data": str(e) }
     # Log the response
@@ -57,7 +60,7 @@ def do_charge(target, form):
             new_amount = result[0]["amount"] + float(amount)
         elif target == NEW_USER:
             uid = secrets.token_hex(5)
-            sql = f"INSERT INTO USERS(uid, amount, created_at, updated_at) VALUES('{ uid }', { amount }, '{ datetime.now() }', '{ datetime.now() }')"
+            sql = f"INSERT INTO users(uid, amount, created_at, updated_at, last_access) VALUES('{ uid }', { amount }, '{ datetime.now() }', '{ datetime.now() }', '{ datetime.now() }')"
             cursor.execute(sql)
             db.commit()
             new_amount = float(amount)

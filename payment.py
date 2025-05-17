@@ -1,4 +1,6 @@
-#!C:/Users/1/AppData/Local/Programs/Python/Python313/python3.13.exe
+#!./.venv/bin/python3
+#coding: utf-8
+
 import json
 import cgi
 import os
@@ -10,26 +12,29 @@ import requests
 from logger import logger
 load_dotenv()
 
-MAINS_SERVER_ADDRESS = "https://48v.me/~mains/cgi-bin/com.py"
+MAINS_SERVER_ADDRESS = "http://www.48v.me/~mains/cgi-bin/com.py"
 
-db = mysql.connector.connect(
-    host=os.getenv("DB_URL"),
-    user=os.getenv("DB_USERNAME"),
-    password=os.getenv("DB_PASSWORD"),
-    database=os.getenv("DB_NAME"),
-    auth_plugin="mysql_native_password"
-)
+
 
 def handle():
     try:
+        db = mysql.connector.connect(
+            host=os.getenv("DB_URL"),
+            user=os.getenv("DB_USERNAME"),
+            password=os.getenv("DB_PASSWORD"),
+            database=os.getenv("DB_NAME"),
+            auth_plugin="mysql_native_password"
+        )
         form = cgi.FieldStorage()
         command = form.getfirst("command", "").strip()
         # Log the incoming request
         log_id = logger.log_request(form)
         if command == "inquiry": 
-            result = get_credit_limit(form=form)
+            result = get_credit_limit(form=form, db=db)
         elif command == "transfer":
-            result = transfer(form=form)
+            result = transfer(form=form, db=db)
+        else:
+            result = { "success": False, "data": "Invalid command" }
     except Exception as e:
         result = { "success": False, "data": str(e) }
     # Log the response
@@ -38,11 +43,11 @@ def handle():
     print(json.dumps(result, default=str)) 
     
     
-def get_credit_limit(form):
+def get_credit_limit(form, db):
     try:
-        target_tid = form.getfirst("target_tid", "")
-        target_auth = form.getfirst("target_auth", "")
-        auth_data = { "command":"certification", "target_tid": target_tid, "target_auth": target_auth }
+        target_tid = form.getfirst("target_tid", "").strip()
+        target_auth = form.getfirst("target_auth", "").strip()
+        auth_data = { "command": "certification", "target_tid": target_tid, "target_auth": target_auth }
         response = requests.post(MAINS_SERVER_ADDRESS, data = auth_data)
         if response.status_code == 200:
             cursor = db.cursor(dictionary=True)
@@ -63,7 +68,7 @@ def get_credit_limit(form):
     except Exception as e:
         return { "success": False, "data": str(e) }
     
-def transfer(form):
+def transfer(form, db):
     try:
         tid = form.getfirst("tid", "").strip()
         auth = form.getfirst("auth", "").strip()
@@ -83,15 +88,15 @@ def transfer(form):
             else:
                 user_amount = float(users[0]["amount"])
                 if(user_amount < amount):
-                    sql = f"UPDATE users SET amount = 0, last_access = '{ datetime.now() } WHERE uid = '{uid}'"
+                    sql = f"UPDATE users SET amount = 0, last_access = '{ datetime.now() }' WHERE uid = '{uid}'"
                     cursor.execute(sql)
                     db.commit()
                     return { "success": False, "error_code": "Insufficient balance", "balance": 0, "defict": amount - user_amount }
                 else:
-                    sql = f"UPDATE users SET last_access = { datetime.now() }, amount = amount - {amount} WHERE uid='{uid}'"
+                    sql = f"UPDATE users SET last_access = '{ datetime.now() }', amount = amount - {amount} WHERE uid='{uid}'"
                     cursor.execute(sql)
                     db.commit()
-                    sql = f"UPDATE owners SET amount = amount + {amount}, last_access = { datetime.now() } WHERE owner_id='{dist_uid}'"
+                    sql = f"UPDATE owners SET amount = amount + {amount}, last_access = '{ datetime.now() }' WHERE owner_id='{dist_uid}'"
                     cursor.execute(sql)
                     db.commit()
                     return { "success": True, "balance": user_amount - amount }
@@ -100,7 +105,4 @@ def transfer(form):
     except Exception as e:
         return { "success": False, "data": "USER_NOT_FOUND", "details": str(e) }
 
-handle()     
-    
-    
-    
+handle()

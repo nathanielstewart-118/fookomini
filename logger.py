@@ -32,17 +32,17 @@ class Logger:
                 
             cursor = self.db.cursor(dictionary=True)
             ip_address = os.environ.get('REMOTE_ADDR', 'Unknown')
-            command = form.getfirst('command', '')
-            tid = form.getfirst('tid', '')
+            command = form.getfirst('command', '').strip()
+            tid = form.getfirst('tid', '').strip()
             
             # Convert form data to JSON
             received_json = json.dumps(dict((key, form.getfirst(key)) for key in form.keys()))
             
             sql = """INSERT INTO logs
-                    (ip_address, tid, command, received_json, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, %s)"""
+                    (ip_address, tid, command, received_json, sent_json, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)"""
             current_time = datetime.now()
-            cursor.execute(sql, (ip_address, tid, command, received_json, current_time, current_time))
+            cursor.execute(sql, (ip_address, tid, command, received_json, "", current_time, current_time))
             self.db.commit()
             
             return cursor.lastrowid
@@ -69,12 +69,6 @@ class Logger:
         except Exception as e:
             print(f"Response logging error: {str(e)}", file=sys.stderr)
 
-    def __del__(self):
-        """
-        Close database connection when logger is destroyed
-        """
-        if hasattr(self, 'db') and self.db:
-            self.db.close()
 
 # Create a singleton instance
 logger = Logger()
