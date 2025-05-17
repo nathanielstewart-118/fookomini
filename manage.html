@@ -31,6 +31,20 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      position: relative;
+      cursor: pointer;
+    }
+    .ellipsis-text:hover {
+      overflow: visible;
+      white-space: normal;
+      height: auto;
+      position: absolute;
+      background-color: white;
+      z-index: 1000;
+      padding: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
     .nav-tabs .nav-link {
       color: #6c757d;
@@ -242,8 +256,8 @@
         "<td>" + newData.ipAddress + "</td>" + 
         "<td>" + newData.tid + "</td>" + 
         "<td>" + newData.command + "</td>" + 
-        "<td>" + newData.received + "</td>" + 
-        "<td>" + newData.sent + "</td>" + 
+        "<td class='ellipsis-text'>" + newData.received + "</td>" + 
+        "<td class='ellipsis-text'>" + newData.sent + "</td>" + 
         "<td>" + newData.lastAccess + "</td>" + 
         "<td>" + newData.createdAt + 
         "</td></tr>"
