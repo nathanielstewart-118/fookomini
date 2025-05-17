@@ -5,17 +5,14 @@
 import json
 import cgi
 import os
-import secrets
 from dotenv import load_dotenv
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
 import mysql.connector
-import requests
-
+import time
 
 load_dotenv()
 
 MAINS_SERVER_ADDRESS = "http://www.48v.me/~mains/cgi-bin/com.py"
-
 db = mysql.connector.connect(
     host=os.getenv("DB_URL"),
     user=os.getenv("DB_USERNAME"),
@@ -28,7 +25,7 @@ def handle():
     try:
         form = cgi.FieldStorage()
         command = form.getfirst("command", "").strip()
-        
+        start = time.time()
         if command == "get_uids": 
             result = get_uids()
         elif command == "get_logs":
@@ -37,6 +34,8 @@ def handle():
             result = refresh()
         else:
             result = { "success": False, "data": "Invalid command" }
+        end = time.time()
+        result["time"] = end - start
     except Exception as e:
         result = { "success": False, "data": str(e) }
     print ("Access-Control-Allow-Headers: Origin, Content-Type\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS\r\nContent-Type: application/json\r\n")

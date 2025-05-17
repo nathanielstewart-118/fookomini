@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from datetime import datetime, timezone
 import mysql.connector
 from logger import logger
+import time
 
 load_dotenv()
 
@@ -25,6 +26,7 @@ REGISTERED_USER = 1
 
 def handle():
     try:
+        start = time.time()
         form = cgi.FieldStorage()
         command = form.getfirst("command", "").strip()
         # Log the incoming request
@@ -37,6 +39,8 @@ def handle():
             result = withdraw(form=form)
         else:
             result = { "success": False, "data": "Invalid command" }
+        end = time.time()
+        result["time"] = end - start
     except Exception as e:
         result = { "success": False, "data": str(e) }
     # Log the response
