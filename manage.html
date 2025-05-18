@@ -53,9 +53,44 @@
       color: #0d6efd;
       font-weight: bold;
     }
+    /* Loading overlay styles */
+    .loading-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      z-index: 9999;
+    }
+    .loading-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    .loading-spinner i {
+      font-size: 3rem;
+      color: #0d6efd;
+    }
+    .loading-text {
+      margin-top: 1rem;
+      color: #0d6efd;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner">
+    <i class="fas fa-spinner fa-spin"></i>
+    <div class="loading-text">Loading data...</div>
+  </div>
+</div>
 
 <div class="container py-5">
   <h2 class="mb-4">Management Dashboard</h2>
@@ -145,6 +180,16 @@
   const logsApiEndPoint = "/~fookomini/cgi-bin/manage.py"
   const uidsApiEndPoint = "/~fookomini/cgi-bin/manage.py"
   const tableCellMaxLength = 50
+  const loadingOverlay = document.getElementById("loadingOverlay")
+
+  // Show/hide loading overlay functions
+  const showLoading = () => {
+    loadingOverlay.style.display = 'block'
+  }
+
+  const hideLoading = () => {
+    loadingOverlay.style.display = 'none'
+  }
 
   document.addEventListener("DOMContentLoaded", () => {
     // Initialize UIDs table on page load
@@ -179,6 +224,7 @@
   });
 
   const loadUIDs = () => {
+    showLoading()
     fetch(uidsApiEndPoint, {
       method: "POST",
       body: new URLSearchParams({
@@ -186,8 +232,14 @@
       }),
     })
     .then(response => response.json())
-    .then(data => displayUIDsTable(data.users))
-    .catch(console.log)
+    .then(data => {
+      displayUIDsTable(data.users)
+      hideLoading()
+    })
+    .catch(error => {
+      console.log(error)
+      hideLoading()
+    })
   }
 
   const displayUIDsTable = (data) => {
@@ -282,6 +334,7 @@
   }
 
   const handleChangeMonth = date => {
+    showLoading()
     fetch(logsApiEndPoint, {
       method: "POST",
       body: new URLSearchParams({
@@ -290,11 +343,18 @@
       }),
     })
     .then(response => response.json())
-    .then(data => displayTable(data.logs, "logs-table-tbody", "logs-table"))
-    .catch(console.log)
+    .then(data => {
+      displayTable(data.logs, "logs-table-tbody", "logs-table")
+      hideLoading()
+    })
+    .catch(error => {
+      console.log(error)
+      hideLoading()
+    })
   }
 
   const refreshDB = () => {
+    showLoading()
     fetch(logsApiEndPoint, {
       method: "POST",
       body: new URLSearchParams({
@@ -304,6 +364,7 @@
     .then(response => response.json())
     .then(data => {
       console.log(data)
+      hideLoading()
       if (data.success) {
         alert("Database refreshed successfully!");
         // Reload current tab data
@@ -319,6 +380,7 @@
     })
     .catch(error => {
       console.error('Error:', error);
+      hideLoading()
       alert("Error refreshing database. Please check console for details.");
     });
   }
