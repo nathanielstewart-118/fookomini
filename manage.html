@@ -182,6 +182,10 @@
   const tableCellMaxLength = 50
   const loadingOverlay = document.getElementById("loadingOverlay")
 
+  // Cache objects for storing fetched data
+  let cachedUIDs = null;
+  let cachedLogs = {};
+
   // Show/hide loading overlay functions
   const showLoading = () => {
     loadingOverlay.style.display = 'block'
@@ -208,20 +212,38 @@
 
     // Initialize logs data when the logs tab is shown
     $('#logs-tab').on('shown.bs.tab', function (e) {
-      handleChangeMonth($("#monthPicker").val());
+      const currentMonth = $("#monthPicker").val();
+      displayCachedLogs(currentMonth);
     });
 
     // Initialize UIDs data when the UIDs tab is shown
     $('#uids-tab').on('shown.bs.tab', function (e) {
-      loadUIDs();
+      displayCachedUIDs();
     });
 
     // Initial load of logs if we're starting on the logs tab
     if (window.location.hash === '#logs') {
       $('#logs-tab').tab('show');
-      handleChangeMonth($("#monthPicker").val());
+      const currentMonth = $("#monthPicker").val();
+      displayCachedLogs(currentMonth);
     }
   });
+
+  const displayCachedUIDs = () => {
+    if (cachedUIDs) {
+      displayUIDsTable(cachedUIDs);
+    } else {
+      loadUIDs();
+    }
+  }
+
+  const displayCachedLogs = (date) => {
+    if (cachedLogs[date]) {
+      displayTable(cachedLogs[date], "logs-table-tbody", "logs-table");
+    } else {
+      loadLogs(date);
+    }
+  }
 
   const loadUIDs = () => {
     showLoading()
@@ -233,13 +255,75 @@
     })
     .then(response => response.json())
     .then(data => {
-      displayUIDsTable(data.users)
+      cachedUIDs = data.users;
+      displayUIDsTable(cachedUIDs)
       hideLoading()
     })
     .catch(error => {
       console.log(error)
       hideLoading()
     })
+  }
+
+  const loadLogs = (date) => {
+    showLoading()
+    fetch(logsApiEndPoint, {
+      method: "POST",
+      body: new URLSearchParams({
+        date,
+        command: "get_logs"
+      }),
+    })
+    .then(response => response.json())
+    .then(data => {
+      cachedLogs[date] = data.logs;
+      displayTable(data.logs, "logs-table-tbody", "logs-table")
+      hideLoading()
+    })
+    .catch(error => {
+      console.log(error)
+      hideLoading()
+    })
+  }
+
+  // Modify handleChangeMonth to use cache
+  const handleChangeMonth = date => {
+    displayCachedLogs(date);
+  }
+
+  const refreshDB = () => {
+    showLoading()
+    fetch(logsApiEndPoint, {
+      method: "POST",
+      body: new URLSearchParams({
+        command: "refresh_db"
+      }),
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log(data)
+      hideLoading()
+      if (data.success) {
+        alert("Database refreshed successfully!");
+        // Clear cache and reload data
+        cachedUIDs = null;
+        cachedLogs = {};
+        // Reload current tab data
+        const activeTab = document.querySelector('.nav-link.active');
+        if (activeTab.id === 'uids-tab') {
+          loadUIDs();
+        } else if (activeTab.id === 'logs-tab') {
+          loadLogs($("#monthPicker").val());
+        }
+      } else {
+        alert("Failed to refresh database: " + (data.message || "Unknown error"));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      hideLoading()
+      alert("Error refreshing database. Please check console for details.");
+    });
   }
 
   const displayUIDsTable = (data) => {
@@ -330,58 +414,6 @@
           td.innerHTML = cellData;
         }
       }]
-    });
-  }
-
-  const handleChangeMonth = date => {
-    showLoading()
-    fetch(logsApiEndPoint, {
-      method: "POST",
-      body: new URLSearchParams({
-        date,
-        command: "get_logs"
-      }),
-    })
-    .then(response => response.json())
-    .then(data => {
-      displayTable(data.logs, "logs-table-tbody", "logs-table")
-      hideLoading()
-    })
-    .catch(error => {
-      console.log(error)
-      hideLoading()
-    })
-  }
-
-  const refreshDB = () => {
-    showLoading()
-    fetch(logsApiEndPoint, {
-      method: "POST",
-      body: new URLSearchParams({
-        command: "refresh_db"
-      }),
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log(data)
-      hideLoading()
-      if (data.success) {
-        alert("Database refreshed successfully!");
-        // Reload current tab data
-        const activeTab = document.querySelector('.nav-link.active');
-        if (activeTab.id === 'uids-tab') {
-          loadUIDs();
-        } else if (activeTab.id === 'logs-tab') {
-          handleChangeMonth($("#monthPicker").val());
-        }
-      } else {
-        alert("Failed to refresh database: " + (data.message || "Unknown error"));
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      hideLoading()
-      alert("Error refreshing database. Please check console for details.");
     });
   }
 </script>
