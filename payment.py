@@ -73,33 +73,27 @@ def transfer(form, db):
         tid = form.getfirst("tid", "").strip()
         auth = form.getfirst("auth", "").strip()
         amount = float(form.getfirst("amount", "0").strip())
+        uid = form.getfirst("uid", "").strip()
+        dist_uid = form.getfirst("dist_uid", "").strip()
         response = requests.post(MAINS_SERVER_ADDRESS, data = { "command":"certification", "target_tid": tid, "target_auth": auth})
         cursor = db.cursor(dictionary=True)
-        if response.status_code == 200:
-            uid = form.getfirst("uid", "").strip()
-            dist_uid = form.getfirst("dist_uid", "").strip()
-            sql = f"SELECT * FROM users WHERE uid = '{uid}'"
-            cursor.execute(sql)
-            users = cursor.fetchall()
-            if len(users) == 0:
-                return { "success": False, "data": "No user id" }
-            elif len(users) > 1:
-                return { "success": False, "data": "Duplicate user id" }
+        sql = f"SELECT * FROM users WHERE uid='{uid}' or uid='{dist_uid}'"
+        cursor.execute(sql)
+        users = cursor.fetchall()
+        if len(users) == 2:
+            if response.status_code == 200:
+                sql = f"UPDATE users SET last_access = '{ datetime.now() }', amount = amount - {amount} WHERE uid='{uid}'"
+                cursor.execute(sql)
+                db.commit()
+                sql = f"UPDATE users SET amount = amount + {amount}, last_access = '{ datetime.now() }' WHERE uid='{dist_uid}'"
+                cursor.execute(sql)
+                db.commit()
+                sql = f"SELECT amount FROM users WHERE uid='{uid}'"
+                cursor.execute(sql)
+                user_amount = cursor.fetchall()[0]["amount"]
+                return { "success": True, "balance": round(user_amount, 2) }
             else:
-                user_amount = float(users[0]["amount"])
-                if(user_amount < amount):
-                    sql = f"UPDATE users SET amount = 0, last_access = '{ datetime.now() }' WHERE uid = '{uid}'"
-                    cursor.execute(sql)
-                    db.commit()
-                    return { "success": False, "error_code": "Insufficient balance", "balance": 0, "defict": amount - user_amount }
-                else:
-                    sql = f"UPDATE users SET last_access = '{ datetime.now() }', amount = amount - {amount} WHERE uid='{uid}'"
-                    cursor.execute(sql)
-                    db.commit()
-                    sql = f"UPDATE owners SET amount = amount + {amount}, last_access = '{ datetime.now() }' WHERE owner_id='{dist_uid}'"
-                    cursor.execute(sql)
-                    db.commit()
-                    return { "success": True, "balance": user_amount - amount }
+                return { "success": False, "data": "USER_NOT_FOUND.", "details": response.text   }
         else:
             return { "success": False, "data": "USER_NOT_FOUND." }
     except Exception as e:
